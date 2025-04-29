@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, CheckCircle2 } from "lucide-react"
 import type { Temporada } from "@/lib/types"
 
 interface TemporadaCardProps {
@@ -14,7 +14,10 @@ export default function TemporadaCard({ temporada, modoId, temporadaIndex }: Tem
     <Card>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">{temporada.nombre}</CardTitle>
+          <div className="flex items-center">
+            <CardTitle className="text-lg">{temporada.nombre}</CardTitle>
+            {temporada.completada && <CheckCircle2 className="ml-2 h-4 w-4 text-green-500" />}
+          </div>
           <Link
             href={`/modo/${modoId}/temporada/${temporadaIndex}`}
             className="text-sm text-muted-foreground hover:text-foreground flex items-center"
@@ -23,7 +26,11 @@ export default function TemporadaCard({ temporada, modoId, temporadaIndex }: Tem
             <ChevronRight className="ml-1 h-4 w-4" />
           </Link>
         </div>
-        <CardDescription>{temporada.jugadores.length} jugadores registrados</CardDescription>
+        <CardDescription>
+          {temporada.jugadores.length > 0
+            ? `${temporada.jugadores.length} jugadores registrados`
+            : "Sin jugadores registrados"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

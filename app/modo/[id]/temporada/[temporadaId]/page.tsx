@@ -1,11 +1,14 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, CalendarDays, Trophy, Users } from "lucide-react"
+import { ArrowLeft, CalendarDays, Trophy, Users, Edit, DollarSign } from "lucide-react"
 import { getCareerMode } from "@/lib/career-mode-service"
 import type { CareerMode, Temporada } from "@/lib/types"
 
@@ -18,6 +21,13 @@ export default function TemporadaPage({
   const [modoCarrera, setModoCarrera] = useState<CareerMode | null>(null)
   const [temporada, setTemporada] = useState<Temporada | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Filtros para jugadores
+  const [filtros, setFiltros] = useState({
+    posicion: "",
+    estado: "todos",
+    ordenarPor: "nombre",
+  })
 
   useEffect(() => {
     const cargarDatos = () => {
@@ -46,6 +56,49 @@ export default function TemporadaPage({
 
     cargarDatos()
   }, [params.id, params.temporadaId, router])
+
+  const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFiltros((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const jugadoresFiltrados = () => {
+    if (!temporada) return []
+
+    return temporada.jugadores
+      .filter((jugador) => {
+        // Filtrar por posición
+        if (filtros.posicion && !jugador.posicion.toLowerCase().includes(filtros.posicion.toLowerCase())) {
+          return false
+        }
+
+        // Filtrar por estado
+        if (filtros.estado !== "todos" && jugador.estado !== filtros.estado) {
+          return false
+        }
+
+        return true
+      })
+      .sort((a, b) => {
+        // Ordenar según el criterio seleccionado
+        switch (filtros.ordenarPor) {
+          case "nombre":
+            return a.nombre.localeCompare(b.nombre)
+          case "posicion":
+            return a.posicion.localeCompare(b.posicion)
+          case "edad":
+            return Number(a.edad) - Number(b.edad)
+          case "valoracion":
+            return Number(a.valoracion) - Number(b.valoracion)
+          case "valoracionFinal":
+            return Number(a.valoracionFinal || 0) - Number(b.valoracionFinal || 0)
+          case "valor":
+            return a.valor.localeCompare(b.valor)
+          default:
+            return 0
+        }
+      })
+  }
 
   if (loading) {
     return <div className="container mx-auto p-8 text-center">Cargando...</div>
@@ -80,12 +133,19 @@ export default function TemporadaPage({
                 {modoCarrera.nombre} - {modoCarrera.equipo}
               </p>
             </div>
+            <Link href={`/modo/${params.id}/temporada/${params.temporadaId}/editar`}>
+              <Button>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar Temporada
+              </Button>
+            </Link>
           </div>
 
           <Tabs defaultValue="resumen">
             <TabsList className="mb-6">
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
               <TabsTrigger value="jugadores">Jugadores</TabsTrigger>
+              <TabsTrigger value="finanzas">Finanzas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resumen">
@@ -151,13 +211,123 @@ export default function TemporadaPage({
                   </CardContent>
                 </Card>
               </div>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <DollarSign className="mr-2 h-5 w-5 text-green-700" />
+                    Resumen Financiero
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {temporada.finanzas.presupuestoInicial && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Presupuesto Inicial:</span>
+                        <span>{temporada.finanzas.presupuestoInicial}</span>
+                      </div>
+                    )}
+
+                    {temporada.finanzas.ingresosTransferencias && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Ingresos por Transferencias:</span>
+                        <span className="text-green-600">{temporada.finanzas.ingresosTransferencias}</span>
+                      </div>
+                    )}
+
+                    {temporada.finanzas.egresosTransferencias && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Gastos en Transferencias:</span>
+                        <span className="text-red-600">{temporada.finanzas.egresosTransferencias}</span>
+                      </div>
+                    )}
+
+                    {temporada.finanzas.presupuestoFinal && (
+                      <div className="flex justify-between border-t pt-2 mt-2">
+                        <span className="font-medium">Presupuesto Final:</span>
+                        <span>{temporada.finanzas.presupuestoFinal}</span>
+                      </div>
+                    )}
+
+                    {!temporada.finanzas.presupuestoInicial &&
+                      !temporada.finanzas.ingresosTransferencias &&
+                      !temporada.finanzas.egresosTransferencias &&
+                      !temporada.finanzas.presupuestoFinal && (
+                        <p className="text-muted-foreground">No hay datos financieros registrados.</p>
+                      )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="jugadores">
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Filtrar Jugadores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="posicion-filtro" className="text-sm font-medium">
+                        Posición
+                      </label>
+                      <input
+                        id="posicion-filtro"
+                        name="posicion"
+                        placeholder="Filtrar por posición"
+                        value={filtros.posicion}
+                        onChange={handleFiltroChange}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="estado-filtro" className="text-sm font-medium">
+                        Estado
+                      </label>
+                      <select
+                        id="estado-filtro"
+                        name="estado"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={filtros.estado}
+                        onChange={handleFiltroChange}
+                      >
+                        <option value="todos">Todos</option>
+                        <option value="en_club">En Club</option>
+                        <option value="cedido">Cedidos</option>
+                        <option value="vendido">Vendidos</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="ordenar-por" className="text-sm font-medium">
+                        Ordenar por
+                      </label>
+                      <select
+                        id="ordenar-por"
+                        name="ordenarPor"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={filtros.ordenarPor}
+                        onChange={handleFiltroChange}
+                      >
+                        <option value="nombre">Nombre</option>
+                        <option value="posicion">Posición</option>
+                        <option value="edad">Edad</option>
+                        <option value="valoracion">Media Inicial</option>
+                        <option value="valoracionFinal">Media Final</option>
+                        <option value="valor">Valor</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Plantilla de la Temporada</CardTitle>
-                  <CardDescription>{temporada.jugadores.length} jugadores registrados</CardDescription>
+                  <CardDescription>
+                    {jugadoresFiltrados().length} jugadores mostrados de {temporada.jugadores.length} totales
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {temporada.jugadores.length === 0 ? (
@@ -169,26 +339,30 @@ export default function TemporadaPage({
                       </p>
                     </div>
                   ) : (
-                    <div className="border rounded-md overflow-hidden">
+                    <div className="border rounded-md overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-muted">
                           <tr>
                             <th className="text-left p-2">Nombre</th>
                             <th className="text-left p-2">Pos</th>
                             <th className="text-left p-2">Edad</th>
-                            <th className="text-left p-2">Rating</th>
+                            <th className="text-left p-2">Media Inicial</th>
+                            <th className="text-left p-2">Media Final</th>
                             <th className="text-left p-2">Valor</th>
+                            <th className="text-left p-2">Salario</th>
                             <th className="text-left p-2">Estado</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {temporada.jugadores.map((jugador, index) => (
+                          {jugadoresFiltrados().map((jugador, index) => (
                             <tr key={index} className="border-t">
                               <td className="p-2">{jugador.nombre}</td>
                               <td className="p-2">{jugador.posicion}</td>
                               <td className="p-2">{jugador.edad}</td>
                               <td className="p-2">{jugador.valoracion}</td>
+                              <td className="p-2">{jugador.valoracionFinal || "-"}</td>
                               <td className="p-2">{jugador.valor}</td>
+                              <td className="p-2">{jugador.salario || "-"}</td>
                               <td className="p-2">
                                 {jugador.estado === "en_club"
                                   ? "En Club"
@@ -204,6 +378,110 @@ export default function TemporadaPage({
                       </table>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="finanzas">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Finanzas de la Temporada</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Presupuesto</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Presupuesto Inicial:</span>
+                            <span className="font-medium">{temporada.finanzas.presupuestoInicial || "-"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Presupuesto Final:</span>
+                            <span className="font-medium">{temporada.finanzas.presupuestoFinal || "-"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Balance</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Ingresos Totales:</span>
+                            <span className="font-medium text-green-600">
+                              {Number.parseFloat(temporada.finanzas.ingresosTransferencias || "0") +
+                                Number.parseFloat(temporada.finanzas.ingresosOtros || "0") >
+                              0
+                                ? `${
+                                    Number.parseFloat(temporada.finanzas.ingresosTransferencias || "0") +
+                                    Number.parseFloat(temporada.finanzas.ingresosOtros || "0")
+                                  }M€`
+                                : "-"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Gastos Totales:</span>
+                            <span className="font-medium text-red-600">
+                              {Number.parseFloat(temporada.finanzas.egresosTransferencias || "0") +
+                                Number.parseFloat(temporada.finanzas.egresosOtros || "0") >
+                              0
+                                ? `${
+                                    Number.parseFloat(temporada.finanzas.egresosTransferencias || "0") +
+                                    Number.parseFloat(temporada.finanzas.egresosOtros || "0")
+                                  }M€`
+                                : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Ingresos</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Transferencias:</span>
+                            <span className="text-green-600">{temporada.finanzas.ingresosTransferencias || "-"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Otros Ingresos:</span>
+                            <span className="text-green-600">{temporada.finanzas.ingresosOtros || "-"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Gastos</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Transferencias:</span>
+                            <span className="text-red-600">{temporada.finanzas.egresosTransferencias || "-"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Otros Gastos:</span>
+                            <span className="text-red-600">{temporada.finanzas.egresosOtros || "-"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!temporada.finanzas.presupuestoInicial &&
+                      !temporada.finanzas.ingresosTransferencias &&
+                      !temporada.finanzas.egresosTransferencias &&
+                      !temporada.finanzas.ingresosOtros &&
+                      !temporada.finanzas.egresosOtros &&
+                      !temporada.finanzas.presupuestoFinal && (
+                        <div className="text-center py-8">
+                          <DollarSign className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+                          <h3 className="mt-4 text-lg font-medium">No hay datos financieros</h3>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            No se han registrado datos financieros para esta temporada.
+                          </p>
+                        </div>
+                      )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

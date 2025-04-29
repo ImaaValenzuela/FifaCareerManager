@@ -68,6 +68,29 @@ export function addSeason(modoId: string, temporada: Temporada): boolean {
   }
 }
 
+// Actualizar una temporada específica
+export function updateSeason(modoId: string, temporadaIndex: number, temporada: Temporada): boolean {
+  try {
+    const modes = getCareerModes()
+    const modeIndex = modes.findIndex((mode) => mode.id === modoId)
+
+    if (modeIndex === -1) return false
+    if (!Array.isArray(modes[modeIndex].temporadas)) return false
+    if (temporadaIndex < 0 || temporadaIndex >= modes[modeIndex].temporadas.length) return false
+
+    // Actualizar la temporada
+    modes[modeIndex].temporadas[temporadaIndex] = temporada
+
+    // Guardar en localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(modes))
+
+    return true
+  } catch (error) {
+    console.error("Error updating season:", error)
+    return false
+  }
+}
+
 // Actualizar un modo carrera
 export function updateCareerMode(id: string, data: Partial<CareerMode>): boolean {
   const modes = getCareerModes()

@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import { getCareerMode, addSeason } from "@/lib/career-mode-service"
-import type { CareerMode, Jugador, Temporada } from "@/lib/types"
+import type { CareerMode, Temporada } from "@/lib/types"
 
 export default function NuevaTemporadaPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -29,15 +29,15 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
       champions: "",
       otros: "",
     },
-  })
-
-  const [nuevoJugador, setNuevoJugador] = useState<Jugador>({
-    nombre: "",
-    posicion: "",
-    edad: "",
-    valoracion: "",
-    valor: "",
-    estado: "en_club",
+    finanzas: {
+      presupuestoInicial: "",
+      ingresosTransferencias: "",
+      egresosTransferencias: "",
+      ingresosOtros: "",
+      egresosOtros: "",
+      presupuestoFinal: "",
+    },
+    completada: false,
   })
 
   useEffect(() => {
@@ -50,20 +50,11 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
         }
         setModoCarrera(modo)
 
-        // Si hay temporadas anteriores, pre-cargar jugadores que siguen en el club
+        // Si hay temporadas anteriores, establecer el nombre de la temporada
         if (modo.temporadas.length > 0) {
-          const ultimaTemporada = modo.temporadas[modo.temporadas.length - 1]
-          const jugadoresEnClub = ultimaTemporada.jugadores
-            .filter((j) => j.estado === "en_club" || j.estado === "cedido")
-            .map((j) => ({
-              ...j,
-              estado: j.estado === "cedido" ? "en_club" : j.estado, // Los cedidos vuelven al club
-            }))
-
           setFormData((prev) => ({
             ...prev,
             nombre: `Temporada ${modo.temporadas.length + 1}`,
-            jugadores: jugadoresEnClub,
           }))
         } else {
           // Primera temporada
@@ -86,48 +77,6 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handlePosicionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      posiciones: {
-        ...prev.posiciones,
-        [name]: value,
-      },
-    }))
-  }
-
-  const handleNuevoJugadorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setNuevoJugador((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const agregarJugador = () => {
-    if (!nuevoJugador.nombre) return
-
-    setFormData((prev) => ({
-      ...prev,
-      jugadores: [...prev.jugadores, { ...nuevoJugador }],
-    }))
-
-    // Resetear el formulario de nuevo jugador
-    setNuevoJugador({
-      nombre: "",
-      posicion: "",
-      edad: "",
-      valoracion: "",
-      valor: "",
-      estado: "en_club",
-    })
-  }
-
-  const eliminarJugador = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      jugadores: prev.jugadores.filter((_, i) => i !== index),
-    }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -208,196 +157,17 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Posiciones Finales</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="liga">Liga</Label>
-                      <Input
-                        id="liga"
-                        name="liga"
-                        placeholder="Ej: 1° - Campeón"
-                        value={formData.posiciones.liga}
-                        onChange={handlePosicionChange}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="copa">Copa Nacional</Label>
-                      <Input
-                        id="copa"
-                        name="copa"
-                        placeholder="Ej: Semifinales"
-                        value={formData.posiciones.copa}
-                        onChange={handlePosicionChange}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="champions">Champions League</Label>
-                      <Input
-                        id="champions"
-                        name="champions"
-                        placeholder="Ej: Cuartos de Final"
-                        value={formData.posiciones.champions}
-                        onChange={handlePosicionChange}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="otros">Otros Torneos</Label>
-                      <Input
-                        id="otros"
-                        name="otros"
-                        placeholder="Ej: Supercopa - Campeón"
-                        value={formData.posiciones.otros}
-                        onChange={handlePosicionChange}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Jugadores</h3>
-
-                  {formData.jugadores.length > 0 && (
-                    <div className="border rounded-md overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted">
-                          <tr>
-                            <th className="text-left p-2">Nombre</th>
-                            <th className="text-left p-2">Pos</th>
-                            <th className="text-left p-2">Edad</th>
-                            <th className="text-left p-2">Rating</th>
-                            <th className="text-left p-2">Valor</th>
-                            <th className="text-left p-2">Estado</th>
-                            <th className="text-left p-2"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formData.jugadores.map((jugador, index) => (
-                            <tr key={index} className="border-t">
-                              <td className="p-2">{jugador.nombre}</td>
-                              <td className="p-2">{jugador.posicion}</td>
-                              <td className="p-2">{jugador.edad}</td>
-                              <td className="p-2">{jugador.valoracion}</td>
-                              <td className="p-2">{jugador.valor}</td>
-                              <td className="p-2">
-                                {jugador.estado === "en_club"
-                                  ? "En Club"
-                                  : jugador.estado === "cedido"
-                                    ? "Cedido"
-                                    : jugador.estado === "vendido"
-                                      ? "Vendido"
-                                      : ""}
-                              </td>
-                              <td className="p-2">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => eliminarJugador(index)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-md">Añadir Jugador</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nombre-jugador">Nombre</Label>
-                          <Input
-                            id="nombre-jugador"
-                            name="nombre"
-                            value={nuevoJugador.nombre}
-                            onChange={handleNuevoJugadorChange}
-                            placeholder="Nombre del jugador"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="posicion">Posición</Label>
-                          <Input
-                            id="posicion"
-                            name="posicion"
-                            value={nuevoJugador.posicion}
-                            onChange={handleNuevoJugadorChange}
-                            placeholder="Ej: DC, MC, DFC"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edad">Edad</Label>
-                          <Input
-                            id="edad"
-                            name="edad"
-                            value={nuevoJugador.edad}
-                            onChange={handleNuevoJugadorChange}
-                            placeholder="Ej: 23"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="valoracion">Valoración</Label>
-                          <Input
-                            id="valoracion"
-                            name="valoracion"
-                            value={nuevoJugador.valoracion}
-                            onChange={handleNuevoJugadorChange}
-                            placeholder="Ej: 85"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="valor">Valor</Label>
-                          <Input
-                            id="valor"
-                            name="valor"
-                            value={nuevoJugador.valor}
-                            onChange={handleNuevoJugadorChange}
-                            placeholder="Ej: 45M€"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="estado">Estado</Label>
-                          <select
-                            id="estado"
-                            name="estado"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            value={nuevoJugador.estado}
-                            onChange={handleNuevoJugadorChange}
-                          >
-                            <option value="en_club">En Club</option>
-                            <option value="cedido">Cedido</option>
-                            <option value="vendido">Vendido</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <Button type="button" variant="outline" className="mt-4" onClick={agregarJugador}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Añadir Jugador
-                      </Button>
-                    </CardContent>
-                  </Card>
+                <div className="text-sm text-muted-foreground">
+                  <p>
+                    Podrás añadir jugadores, posiciones finales y datos financieros más adelante cuando edites la
+                    temporada.
+                  </p>
                 </div>
               </CardContent>
               <CardFooter>
                 <Button type="submit" className="w-full bg-green-700 hover:bg-green-800">
                   <Save className="mr-2 h-4 w-4" />
-                  Guardar Temporada
+                  Crear Temporada
                 </Button>
               </CardFooter>
             </form>
