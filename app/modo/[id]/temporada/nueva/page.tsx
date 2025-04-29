@@ -133,13 +133,27 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!modoCarrera) return
+    if (!modoCarrera) {
+      console.error("No hay modo carrera cargado")
+      return
+    }
 
-    // Añadir la temporada al modo carrera
-    addSeason(params.id, formData)
+    try {
+      // Añadir la temporada al modo carrera
+      const success = addSeason(params.id, formData)
 
-    // Redirigir al dashboard del modo carrera
-    router.push(`/modo/${params.id}`)
+      if (success) {
+        console.log("Temporada añadida correctamente")
+        // Redirigir al dashboard del modo carrera
+        router.push(`/modo/${params.id}`)
+      } else {
+        console.error("Error al añadir la temporada")
+        alert("Hubo un error al guardar la temporada. Por favor, intenta de nuevo.")
+      }
+    } catch (error) {
+      console.error("Error al guardar la temporada:", error)
+      alert("Hubo un error al guardar la temporada. Por favor, intenta de nuevo.")
+    }
   }
 
   if (loading) {

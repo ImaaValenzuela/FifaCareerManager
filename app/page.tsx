@@ -1,8 +1,29 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, Trophy } from "lucide-react"
+import { getCareerModes } from "@/lib/career-mode-service"
+import type { CareerMode } from "@/lib/types"
 
 export default function HomePage() {
+  const [modos, setModos] = useState<CareerMode[]>([])
+
+  useEffect(() => {
+    // Cargar los modos carrera al montar el componente
+    const cargarModos = () => {
+      try {
+        const modosCarrera = getCareerModes()
+        setModos(modosCarrera)
+      } catch (error) {
+        console.error("Error al cargar los modos carrera:", error)
+      }
+    }
+
+    cargarModos()
+  }, [])
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-green-800 text-white p-4 shadow-md">
@@ -30,9 +51,23 @@ export default function HomePage() {
 
           <div className="mt-12 border-t pt-8">
             <h3 className="text-xl font-medium mb-4">Modos Carrera Existentes</h3>
-            <div className="text-center text-muted-foreground">
-              No hay modos carrera creados. ¡Crea tu primer modo carrera para comenzar!
-            </div>
+            {modos.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {modos.map((modo) => (
+                  <Link key={modo.id} href={`/modo/${modo.id}`} className="block">
+                    <div className="border rounded-lg p-4 text-left hover:border-green-500 transition-colors">
+                      <h4 className="font-medium">{modo.nombre}</h4>
+                      <p className="text-sm text-muted-foreground">{modo.equipo}</p>
+                      <p className="text-xs text-muted-foreground mt-2">{modo.temporadas?.length || 0} temporadas</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground">
+                No hay modos carrera creados. ¡Crea tu primer modo carrera para comenzar!
+              </div>
+            )}
           </div>
         </div>
       </main>

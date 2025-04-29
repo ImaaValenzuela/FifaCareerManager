@@ -31,15 +31,22 @@ export default function CrearModoPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Crear el modo carrera
-    const modoId = createCareerMode({
-      ...formData,
-      fechaCreacion: new Date().toISOString(),
-      temporadas: [],
-    })
+    try {
+      // Crear el modo carrera con un array de temporadas vacío
+      const modoId = createCareerMode({
+        ...formData,
+        fechaCreacion: new Date().toISOString(),
+        temporadas: [],
+      })
 
-    // Redirigir al dashboard del modo carrera
-    router.push(`/modo/${modoId}`)
+      console.log("Modo carrera creado con ID:", modoId)
+
+      // Redirigir al dashboard del modo carrera
+      router.push(`/modo/${modoId}`)
+    } catch (error) {
+      console.error("Error al crear el modo carrera:", error)
+      alert("Hubo un error al crear el modo carrera. Por favor, intenta de nuevo.")
+    }
   }
 
   return (

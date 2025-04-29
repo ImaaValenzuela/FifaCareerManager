@@ -8,10 +8,9 @@ const STORAGE_KEY = "fifa_career_modes"
 export function getCareerModes(): CareerMode[] {
   if (typeof window === "undefined") return []
 
-  const storedData = localStorage.getItem(STORAGE_KEY)
-  if (!storedData) return []
-
   try {
+    const storedData = localStorage.getItem(STORAGE_KEY)
+    if (!storedData) return []
     return JSON.parse(storedData)
   } catch (error) {
     console.error("Error parsing career modes:", error)
@@ -45,18 +44,28 @@ export function createCareerMode(data: Omit<CareerMode, "id">): string {
 
 // Añadir una temporada a un modo carrera
 export function addSeason(modoId: string, temporada: Temporada): boolean {
-  const modes = getCareerModes()
-  const modeIndex = modes.findIndex((mode) => mode.id === modoId)
+  try {
+    const modes = getCareerModes()
+    const modeIndex = modes.findIndex((mode) => mode.id === modoId)
 
-  if (modeIndex === -1) return false
+    if (modeIndex === -1) return false
 
-  // Añadir la temporada al modo
-  modes[modeIndex].temporadas.push(temporada)
+    // Asegurarse de que temporadas es un array
+    if (!Array.isArray(modes[modeIndex].temporadas)) {
+      modes[modeIndex].temporadas = []
+    }
 
-  // Guardar en localStorage
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(modes))
+    // Añadir la temporada al modo
+    modes[modeIndex].temporadas.push(temporada)
 
-  return true
+    // Guardar en localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(modes))
+
+    return true
+  } catch (error) {
+    console.error("Error adding season:", error)
+    return false
+  }
 }
 
 // Actualizar un modo carrera

@@ -21,9 +21,16 @@ export default function ModoCarreraPage({ params }: { params: { id: string } }) 
       try {
         const modo = getCareerMode(params.id)
         if (!modo) {
+          console.error("Modo carrera no encontrado")
           router.push("/")
           return
         }
+
+        // Asegurarse de que temporadas es un array
+        if (!Array.isArray(modo.temporadas)) {
+          modo.temporadas = []
+        }
+
         setModoCarrera(modo)
       } catch (error) {
         console.error("Error al cargar el modo carrera:", error)
