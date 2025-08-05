@@ -19,6 +19,7 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
   const [modoCarrera, setModoCarrera] = useState<CareerMode | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Asegurarse de que todos los campos estén correctamente inicializados
   const [formData, setFormData] = useState<Temporada>({
     nombre: "",
     objetivos: "",
@@ -31,10 +32,15 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
     },
     finanzas: {
       presupuestoInicial: "",
-      ingresosTransferencias: "",
-      egresosTransferencias: "",
+      gastosFichajes: "",
+      profitsFichajes: "",
+      gastosEntrenadores: "",
+      gastosOjeadores: "",
+      gastosInfraestructura: "",
+      gastosOtros: "",
       ingresosOtros: "",
-      egresosOtros: "",
+      gastoTotal: "",
+      ingresoTotal: "",
       presupuestoFinal: "",
     },
     completada: false,
@@ -79,6 +85,7 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Mejorar el manejo del formulario y la depuración
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -88,6 +95,8 @@ export default function NuevaTemporadaPage({ params }: { params: { id: string } 
     }
 
     try {
+      console.log("Intentando añadir temporada:", formData)
+
       // Añadir la temporada al modo carrera
       const success = addSeason(params.id, formData)
 

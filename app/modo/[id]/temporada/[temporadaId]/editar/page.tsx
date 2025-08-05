@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Save, Plus, Trash2, Check } from "lucide-react"
+import { ArrowLeft, Save, Plus, Trash2, Check, Copy, Calculator } from "lucide-react"
 import { getCareerMode, updateSeason } from "@/lib/career-mode-service"
 import type { CareerMode, Jugador, Temporada } from "@/lib/types"
 
@@ -28,6 +28,8 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
     valoracion: "",
     valoracionFinal: "",
     valor: "",
+    valorCompra: "",
+    valorVenta: "",
     salario: "",
     estado: "en_club",
   })
@@ -55,7 +57,25 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
         }
 
         setModoCarrera(modo)
-        setTemporada(modo.temporadas[temporadaIndex])
+
+        // Asegurar que la temporada tenga la estructura correcta de finanzas
+        const temporadaActual = modo.temporadas[temporadaIndex]
+        if (!temporadaActual.finanzas.gastosFichajes) {
+          temporadaActual.finanzas = {
+            ...temporadaActual.finanzas,
+            gastosFichajes: "",
+            profitsFichajes: "",
+            gastosEntrenadores: "",
+            gastosOjeadores: "",
+            gastosInfraestructura: "",
+            gastosOtros: "",
+            ingresosOtros: temporadaActual.finanzas.ingresosOtros || "",
+            gastoTotal: "",
+            ingresoTotal: "",
+          }
+        }
+
+        setTemporada(temporadaActual)
       } catch (error) {
         console.error("Error al cargar los datos:", error)
         router.push("/")
@@ -66,6 +86,86 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
 
     cargarDatos()
   }, [params.id, params.temporadaId, router])
+
+  // Calcular automáticamente los totales de finanzas
+  const calcularFinanzas = () => {
+    if (!temporada) return
+
+    const jugadores = temporada.jugadores || []
+
+    // Calcular gastos en fichajes (suma de valores de compra)
+    const gastosFichajes = jugadores
+      .filter((j) => j.valorCompra && j.valorCompra !== "")
+      .reduce((total, j) => {
+        const valor = Number.parseFloat(j.valorCompra?.replace(/[^\d.-]/g, "") || "0")
+        return total + (isNaN(valor) ? 0 : valor)
+      }, 0)
+
+    // Calcular profits en fichajes (suma de valores de venta)
+    const profitsFichajes = jugadores
+      .filter((j) => j.valorVenta && j.valorVenta !== "")
+      .reduce((total, j) => {
+        const valor = Number.parseFloat(j.valorVenta?.replace(/[^\d.-]/g, "") || "0")
+        return total + (isNaN(valor) ? 0 : valor)
+      }, 0)
+
+    // Calcular gasto total
+    const gastosEntrenadores = Number.parseFloat(temporada.finanzas.gastosEntrenadores?.replace(/[^\d.-]/g, "") || "0")
+    const gastosOjeadores = Number.parseFloat(temporada.finanzas.gastosOjeadores?.replace(/[^\d.-]/g, "") || "0")
+    const gastosInfraestructura = Number.parseFloat(
+      temporada.finanzas.gastosInfraestructura?.replace(/[^\d.-]/g, "") || "0",
+    )
+    const gastosOtros = Number.parseFloat(temporada.finanzas.gastosOtros?.replace(/[^\d.-]/g, "") || "0")
+
+    const gastoTotal = gastosFichajes + gastosEntrenadores + gastosOjeadores + gastosInfraestructura + gastosOtros
+
+    // Calcular ingreso total
+    const ingresosOtros = Number.parseFloat(temporada.finanzas.ingresosOtros?.replace(/[^\d.-]/g, "") || "0")
+    const ingresoTotal = profitsFichajes + ingresosOtros
+
+    // Actualizar la temporada con los cálculos
+    setTemporada((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        finanzas: {
+          ...prev.finanzas,
+          gastosFichajes: gastosFichajes > 0 ? `${gastosFichajes.toFixed(1)}M€` : "",
+          profitsFichajes: profitsFichajes > 0 ? `${profitsFichajes.toFixed(1)}M€` : "",
+          gastoTotal: gastoTotal > 0 ? `${gastoTotal.toFixed(1)}M€` : "",
+          ingresoTotal: ingresoTotal > 0 ? `${ingresoTotal.toFixed(1)}M€` : "",
+        },
+      }
+    })
+  }
+
+  // Ejecutar cálculos cuando cambien los jugadores o gastos
+  useEffect(() => {
+    if (temporada) {
+      calcularFinanzas()
+    }
+  }, [temporada])
+
+  const copiarJugadoresDeTemporada = (temporadaIndex: number) => {
+    if (!modoCarrera || temporadaIndex < 0 || temporadaIndex >= modoCarrera.temporadas.length) return
+
+    const temporadaOrigen = modoCarrera.temporadas[temporadaIndex]
+    const jugadoresCopia = temporadaOrigen.jugadores.map((jugador) => ({
+      ...jugador,
+      valoracionFinal: jugador.valoracion, // La valoración final de la temporada anterior se convierte en inicial
+      valorCompra: "", // Resetear valores de compra/venta para la nueva temporada
+      valorVenta: "",
+      estado: "en_club" as const, // Todos empiezan en el club en la nueva temporada
+    }))
+
+    setTemporada((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        jugadores: jugadoresCopia,
+      }
+    })
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -127,6 +227,8 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
       valoracion: "",
       valoracionFinal: "",
       valor: "",
+      valorCompra: "",
+      valorVenta: "",
       salario: "",
       estado: "en_club",
     })
@@ -152,20 +254,15 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
 
     return temporada.jugadores
       .filter((jugador) => {
-        // Filtrar por posición
         if (filtros.posicion && !jugador.posicion.toLowerCase().includes(filtros.posicion.toLowerCase())) {
           return false
         }
-
-        // Filtrar por estado
         if (filtros.estado !== "todos" && jugador.estado !== filtros.estado) {
           return false
         }
-
         return true
       })
       .sort((a, b) => {
-        // Ordenar según el criterio seleccionado
         switch (filtros.ordenarPor) {
           case "nombre":
             return a.nombre.localeCompare(b.nombre)
@@ -194,12 +291,10 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
     }
 
     try {
-      // Actualizar la temporada
       const success = updateSeason(params.id, Number(params.temporadaId), temporada)
 
       if (success) {
         console.log("Temporada actualizada correctamente")
-        // Redirigir a la vista de la temporada
         router.push(`/modo/${params.id}/temporada/${params.temporadaId}`)
       } else {
         console.error("Error al actualizar la temporada")
@@ -240,7 +335,7 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
       </header>
 
       <main className="flex-1 container mx-auto p-4 md:p-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <Link
             href={`/modo/${params.id}/temporada/${params.temporadaId}`}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
@@ -301,6 +396,50 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
               </TabsContent>
 
               <TabsContent value="jugadores">
+                {/* Copiar jugadores de otras temporadas */}
+                {modoCarrera.temporadas.length > 1 && (
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Copy className="mr-2 h-5 w-5" />
+                        Copiar Jugadores de Otra Temporada
+                      </CardTitle>
+                      <CardDescription>
+                        Copia la plantilla de una temporada anterior para no tener que cargar todo manualmente
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                          <Label>Seleccionar Temporada</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            onChange={(e) => {
+                              const index = Number.parseInt(e.target.value)
+                              if (!isNaN(index)) {
+                                copiarJugadoresDeTemporada(index)
+                              }
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="">Selecciona una temporada...</option>
+                            {modoCarrera.temporadas.map((temp, index) => (
+                              <option key={index} value={index} disabled={index === Number(params.temporadaId)}>
+                                {temp.nombre} ({temp.jugadores.length} jugadores)
+                                {index === Number(params.temporadaId) ? " - Actual" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Esto reemplazará todos los jugadores actuales. Los valores de compra/venta se resetearán.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Filtros */}
                 <Card className="mb-6">
                   <CardHeader>
                     <CardTitle>Filtrar Jugadores</CardTitle>
@@ -355,9 +494,16 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                   </CardContent>
                 </Card>
 
+                {/* Lista de jugadores */}
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Plantilla</CardTitle>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Plantilla</span>
+                      <Button type="button" variant="outline" size="sm" onClick={calcularFinanzas}>
+                        <Calculator className="mr-2 h-4 w-4" />
+                        Recalcular Finanzas
+                      </Button>
+                    </CardTitle>
                     <CardDescription>
                       {jugadoresFiltrados().length} jugadores mostrados de {temporada.jugadores.length} totales
                     </CardDescription>
@@ -375,9 +521,11 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                               <th className="text-left p-2">Nombre</th>
                               <th className="text-left p-2">Pos</th>
                               <th className="text-left p-2">Edad</th>
-                              <th className="text-left p-2">Media Inicial</th>
-                              <th className="text-left p-2">Media Final</th>
+                              <th className="text-left p-2">Media Ini</th>
+                              <th className="text-left p-2">Media Fin</th>
                               <th className="text-left p-2">Valor</th>
+                              <th className="text-left p-2">V. Compra</th>
+                              <th className="text-left p-2">V. Venta</th>
                               <th className="text-left p-2">Salario</th>
                               <th className="text-left p-2">Estado</th>
                               <th className="text-left p-2"></th>
@@ -417,6 +565,50 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                                     />
                                   </td>
                                   <td className="p-2">{jugador.valor}</td>
+                                  <td className="p-2">
+                                    <Input
+                                      type="text"
+                                      value={jugador.valorCompra || ""}
+                                      onChange={(e) => {
+                                        const newJugadores = [...temporada.jugadores]
+                                        newJugadores[originalIndex] = {
+                                          ...newJugadores[originalIndex],
+                                          valorCompra: e.target.value,
+                                        }
+                                        setTemporada((prev) => {
+                                          if (!prev) return prev
+                                          return {
+                                            ...prev,
+                                            jugadores: newJugadores,
+                                          }
+                                        })
+                                      }}
+                                      className="h-8 w-20"
+                                      placeholder="0M€"
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <Input
+                                      type="text"
+                                      value={jugador.valorVenta || ""}
+                                      onChange={(e) => {
+                                        const newJugadores = [...temporada.jugadores]
+                                        newJugadores[originalIndex] = {
+                                          ...newJugadores[originalIndex],
+                                          valorVenta: e.target.value,
+                                        }
+                                        setTemporada((prev) => {
+                                          if (!prev) return prev
+                                          return {
+                                            ...prev,
+                                            jugadores: newJugadores,
+                                          }
+                                        })
+                                      }}
+                                      className="h-8 w-20"
+                                      placeholder="0M€"
+                                    />
+                                  </td>
                                   <td className="p-2">
                                     <Input
                                       type="text"
@@ -482,6 +674,7 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                   </CardContent>
                 </Card>
 
+                {/* Añadir jugador */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Añadir Jugador</CardTitle>
@@ -533,17 +726,6 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="valoracionFinal">Media Final</Label>
-                        <Input
-                          id="valoracionFinal"
-                          name="valoracionFinal"
-                          value={nuevoJugador.valoracionFinal}
-                          onChange={handleNuevoJugadorChange}
-                          placeholder="Ej: 87"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
                         <Label htmlFor="valor">Valor</Label>
                         <Input
                           id="valor"
@@ -551,6 +733,28 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                           value={nuevoJugador.valor}
                           onChange={handleNuevoJugadorChange}
                           placeholder="Ej: 45M€"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="valorCompra">Valor de Compra</Label>
+                        <Input
+                          id="valorCompra"
+                          name="valorCompra"
+                          value={nuevoJugador.valorCompra}
+                          onChange={handleNuevoJugadorChange}
+                          placeholder="Ej: 40M€"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="valorVenta">Valor de Venta</Label>
+                        <Input
+                          id="valorVenta"
+                          name="valorVenta"
+                          value={nuevoJugador.valorVenta}
+                          onChange={handleNuevoJugadorChange}
+                          placeholder="Ej: 50M€"
                         />
                       </div>
 
@@ -581,7 +785,7 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
                       </div>
                     </div>
 
-                    <Button type="button" variant="outline" className="mt-4" onClick={agregarJugador}>
+                    <Button type="button" variant="outline" className="mt-4 bg-transparent" onClick={agregarJugador}>
                       <Plus className="mr-2 h-4 w-4" />
                       Añadir Jugador
                     </Button>
@@ -646,81 +850,188 @@ export default function EditarTemporadaPage({ params }: { params: { id: string; 
               </TabsContent>
 
               <TabsContent value="finanzas">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Finanzas</CardTitle>
-                    <CardDescription>Registra los movimientos financieros de la temporada</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="presupuestoInicial">Presupuesto Inicial</Label>
-                        <Input
-                          id="presupuestoInicial"
-                          name="presupuestoInicial"
-                          placeholder="Ej: 120M€"
-                          value={temporada.finanzas.presupuestoInicial}
-                          onChange={handleFinanzasChange}
-                        />
+                <div className="space-y-6">
+                  {/* Resumen automático */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Calculator className="mr-2 h-5 w-5" />
+                        Resumen Automático
+                      </CardTitle>
+                      <CardDescription>
+                        Calculado automáticamente basado en los datos de jugadores y gastos
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Gastos en Fichajes:</span>
+                            <span className="font-medium text-red-600">
+                              {temporada.finanzas.gastosFichajes || "0M€"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Profits en Fichajes:</span>
+                            <span className="font-medium text-green-600">
+                              {temporada.finanzas.profitsFichajes || "0M€"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Gasto Total:</span>
+                            <span className="font-medium text-red-600">{temporada.finanzas.gastoTotal || "0M€"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Ingreso Total:</span>
+                            <span className="font-medium text-green-600">
+                              {temporada.finanzas.ingresoTotal || "0M€"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                    </CardContent>
+                  </Card>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="ingresosTransferencias">Ingresos por Transferencias</Label>
-                        <Input
-                          id="ingresosTransferencias"
-                          name="ingresosTransferencias"
-                          placeholder="Ej: 45M€"
-                          value={temporada.finanzas.ingresosTransferencias}
-                          onChange={handleFinanzasChange}
-                        />
-                      </div>
+                  {/* Presupuestos */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Presupuestos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="presupuestoInicial">Presupuesto Inicial</Label>
+                          <Input
+                            id="presupuestoInicial"
+                            name="presupuestoInicial"
+                            placeholder="Ej: 120M€"
+                            value={temporada.finanzas.presupuestoInicial}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="egresosTransferencias">Gastos en Transferencias</Label>
-                        <Input
-                          id="egresosTransferencias"
-                          name="egresosTransferencias"
-                          placeholder="Ej: 65M€"
-                          value={temporada.finanzas.egresosTransferencias}
-                          onChange={handleFinanzasChange}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="presupuestoFinal">Presupuesto Final</Label>
+                          <Input
+                            id="presupuestoFinal"
+                            name="presupuestoFinal"
+                            placeholder="Ej: 110M€"
+                            value={temporada.finanzas.presupuestoFinal}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
                       </div>
+                    </CardContent>
+                  </Card>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="ingresosOtros">Otros Ingresos</Label>
-                        <Input
-                          id="ingresosOtros"
-                          name="ingresosOtros"
-                          placeholder="Ej: 25M€"
-                          value={temporada.finanzas.ingresosOtros}
-                          onChange={handleFinanzasChange}
-                        />
-                      </div>
+                  {/* Gastos detallados */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Gastos Detallados</CardTitle>
+                      <CardDescription>Todos los campos son editables</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="gastosFichajes">Gastos en Fichajes (Auto)</Label>
+                          <Input
+                            id="gastosFichajes"
+                            name="gastosFichajes"
+                            placeholder="Calculado automáticamente"
+                            value={temporada.finanzas.gastosFichajes}
+                            onChange={handleFinanzasChange}
+                            className="bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Se calcula automáticamente, pero puedes editarlo
+                          </p>
+                        </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="egresosOtros">Otros Gastos</Label>
-                        <Input
-                          id="egresosOtros"
-                          name="egresosOtros"
-                          placeholder="Ej: 15M€"
-                          value={temporada.finanzas.egresosOtros}
-                          onChange={handleFinanzasChange}
-                        />
-                      </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="gastosEntrenadores">Gastos en Entrenadores</Label>
+                          <Input
+                            id="gastosEntrenadores"
+                            name="gastosEntrenadores"
+                            placeholder="Ej: 5M€"
+                            value={temporada.finanzas.gastosEntrenadores}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="presupuestoFinal">Presupuesto Final</Label>
-                        <Input
-                          id="presupuestoFinal"
-                          name="presupuestoFinal"
-                          placeholder="Ej: 110M€"
-                          value={temporada.finanzas.presupuestoFinal}
-                          onChange={handleFinanzasChange}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="gastosOjeadores">Gastos en Ojeadores</Label>
+                          <Input
+                            id="gastosOjeadores"
+                            name="gastosOjeadores"
+                            placeholder="Ej: 2M€"
+                            value={temporada.finanzas.gastosOjeadores}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="gastosInfraestructura">Gastos en Infraestructura</Label>
+                          <Input
+                            id="gastosInfraestructura"
+                            name="gastosInfraestructura"
+                            placeholder="Ej: 10M€"
+                            value={temporada.finanzas.gastosInfraestructura}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="gastosOtros">Otros Gastos</Label>
+                          <Input
+                            id="gastosOtros"
+                            name="gastosOtros"
+                            placeholder="Ej: 3M€"
+                            value={temporada.finanzas.gastosOtros}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+
+                  {/* Ingresos */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Ingresos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="profitsFichajes">Profits en Fichajes (Auto)</Label>
+                          <Input
+                            id="profitsFichajes"
+                            name="profitsFichajes"
+                            placeholder="Calculado automáticamente"
+                            value={temporada.finanzas.profitsFichajes}
+                            onChange={handleFinanzasChange}
+                            className="bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Se calcula automáticamente, pero puedes editarlo
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="ingresosOtros">Otros Ingresos</Label>
+                          <Input
+                            id="ingresosOtros"
+                            name="ingresosOtros"
+                            placeholder="Ej: 25M€"
+                            value={temporada.finanzas.ingresosOtros}
+                            onChange={handleFinanzasChange}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
 

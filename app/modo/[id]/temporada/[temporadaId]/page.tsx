@@ -8,7 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, CalendarDays, Trophy, Users, Edit, DollarSign } from "lucide-react"
+import { ArrowLeft, CalendarDays, Trophy, Users, Edit, DollarSign, Calculator } from "lucide-react"
 import { getCareerMode } from "@/lib/career-mode-service"
 import type { CareerMode, Temporada } from "@/lib/types"
 
@@ -349,6 +349,8 @@ export default function TemporadaPage({
                             <th className="text-left p-2">Media Inicial</th>
                             <th className="text-left p-2">Media Final</th>
                             <th className="text-left p-2">Valor</th>
+                            <th className="text-left p-2">V. Compra</th>
+                            <th className="text-left p-2">V. Venta</th>
                             <th className="text-left p-2">Salario</th>
                             <th className="text-left p-2">Estado</th>
                           </tr>
@@ -362,6 +364,8 @@ export default function TemporadaPage({
                               <td className="p-2">{jugador.valoracion}</td>
                               <td className="p-2">{jugador.valoracionFinal || "-"}</td>
                               <td className="p-2">{jugador.valor}</td>
+                              <td className="p-2">{jugador.valorCompra || "-"}</td>
+                              <td className="p-2">{jugador.valorVenta || "-"}</td>
                               <td className="p-2">{jugador.salario || "-"}</td>
                               <td className="p-2">
                                 {jugador.estado === "en_club"
@@ -383,107 +387,134 @@ export default function TemporadaPage({
             </TabsContent>
 
             <TabsContent value="finanzas">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finanzas de la Temporada</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
+              <div className="space-y-6">
+                {/* Resumen automático */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Calculator className="mr-2 h-5 w-5" />
+                      Resumen Automático
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Presupuesto</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span>Presupuesto Inicial:</span>
-                            <span className="font-medium">{temporada.finanzas.presupuestoInicial || "-"}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Presupuesto Final:</span>
-                            <span className="font-medium">{temporada.finanzas.presupuestoFinal || "-"}</span>
-                          </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>Gastos en Fichajes:</span>
+                          <span className="font-medium text-red-600">{temporada.finanzas.gastosFichajes || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Profits en Fichajes:</span>
+                          <span className="font-medium text-green-600">
+                            {temporada.finanzas.profitsFichajes || "-"}
+                          </span>
                         </div>
                       </div>
-
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Balance</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span>Ingresos Totales:</span>
-                            <span className="font-medium text-green-600">
-                              {Number.parseFloat(temporada.finanzas.ingresosTransferencias || "0") +
-                                Number.parseFloat(temporada.finanzas.ingresosOtros || "0") >
-                              0
-                                ? `${
-                                    Number.parseFloat(temporada.finanzas.ingresosTransferencias || "0") +
-                                    Number.parseFloat(temporada.finanzas.ingresosOtros || "0")
-                                  }M€`
-                                : "-"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Gastos Totales:</span>
-                            <span className="font-medium text-red-600">
-                              {Number.parseFloat(temporada.finanzas.egresosTransferencias || "0") +
-                                Number.parseFloat(temporada.finanzas.egresosOtros || "0") >
-                              0
-                                ? `${
-                                    Number.parseFloat(temporada.finanzas.egresosTransferencias || "0") +
-                                    Number.parseFloat(temporada.finanzas.egresosOtros || "0")
-                                  }M€`
-                                : "-"}
-                            </span>
-                          </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>Gasto Total:</span>
+                          <span className="font-medium text-red-600">{temporada.finanzas.gastoTotal || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Ingreso Total:</span>
+                          <span className="font-medium text-green-600">{temporada.finanzas.ingresoTotal || "-"}</span>
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Ingresos</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span>Transferencias:</span>
-                            <span className="text-green-600">{temporada.finanzas.ingresosTransferencias || "-"}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Otros Ingresos:</span>
-                            <span className="text-green-600">{temporada.finanzas.ingresosOtros || "-"}</span>
-                          </div>
+                {/* Presupuestos */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Presupuestos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex justify-between">
+                        <span>Presupuesto Inicial:</span>
+                        <span className="font-medium">{temporada.finanzas.presupuestoInicial || "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Presupuesto Final:</span>
+                        <span className="font-medium">{temporada.finanzas.presupuestoFinal || "-"}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Gastos detallados */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gastos Detallados</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>Fichajes:</span>
+                          <span className="text-red-600">{temporada.finanzas.gastosFichajes || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Entrenadores:</span>
+                          <span className="text-red-600">{temporada.finanzas.gastosEntrenadores || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Ojeadores:</span>
+                          <span className="text-red-600">{temporada.finanzas.gastosOjeadores || "-"}</span>
                         </div>
                       </div>
-
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Gastos</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span>Transferencias:</span>
-                            <span className="text-red-600">{temporada.finanzas.egresosTransferencias || "-"}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Otros Gastos:</span>
-                            <span className="text-red-600">{temporada.finanzas.egresosOtros || "-"}</span>
-                          </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>Infraestructura:</span>
+                          <span className="text-red-600">{temporada.finanzas.gastosInfraestructura || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Otros Gastos:</span>
+                          <span className="text-red-600">{temporada.finanzas.gastosOtros || "-"}</span>
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    {!temporada.finanzas.presupuestoInicial &&
-                      !temporada.finanzas.ingresosTransferencias &&
-                      !temporada.finanzas.egresosTransferencias &&
-                      !temporada.finanzas.ingresosOtros &&
-                      !temporada.finanzas.egresosOtros &&
-                      !temporada.finanzas.presupuestoFinal && (
-                        <div className="text-center py-8">
-                          <DollarSign className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
-                          <h3 className="mt-4 text-lg font-medium">No hay datos financieros</h3>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            No se han registrado datos financieros para esta temporada.
-                          </p>
-                        </div>
-                      )}
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Ingresos */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ingresos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex justify-between">
+                        <span>Profits en Fichajes:</span>
+                        <span className="text-green-600">{temporada.finanzas.profitsFichajes || "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Otros Ingresos:</span>
+                        <span className="text-green-600">{temporada.finanzas.ingresosOtros || "-"}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {!temporada.finanzas.presupuestoInicial &&
+                  !temporada.finanzas.gastosFichajes &&
+                  !temporada.finanzas.profitsFichajes &&
+                  !temporada.finanzas.gastosEntrenadores &&
+                  !temporada.finanzas.gastosOjeadores &&
+                  !temporada.finanzas.gastosInfraestructura &&
+                  !temporada.finanzas.gastosOtros &&
+                  !temporada.finanzas.ingresosOtros &&
+                  !temporada.finanzas.presupuestoFinal && (
+                    <div className="text-center py-8">
+                      <DollarSign className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+                      <h3 className="mt-4 text-lg font-medium">No hay datos financieros</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No se han registrado datos financieros para esta temporada.
+                      </p>
+                    </div>
+                  )}
+              </div>
             </TabsContent>
           </Tabs>
         </div>

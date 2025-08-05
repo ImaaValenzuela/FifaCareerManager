@@ -55,11 +55,41 @@ export function addSeason(modoId: string, temporada: Temporada): boolean {
       modes[modeIndex].temporadas = []
     }
 
+    // Asegurarse de que todos los campos necesarios estén presentes
+    const temporadaCompleta: Temporada = {
+      nombre: temporada.nombre || `Temporada ${modes[modeIndex].temporadas.length + 1}`,
+      objetivos: temporada.objetivos || "",
+      jugadores: Array.isArray(temporada.jugadores) ? temporada.jugadores : [],
+      posiciones: {
+        liga: temporada.posiciones?.liga || "",
+        copa: temporada.posiciones?.copa || "",
+        champions: temporada.posiciones?.champions || "",
+        otros: temporada.posiciones?.otros || "",
+      },
+      finanzas: {
+        presupuestoInicial: temporada.finanzas?.presupuestoInicial || "",
+        gastosFichajes: temporada.finanzas?.gastosFichajes || "",
+        profitsFichajes: temporada.finanzas?.profitsFichajes || "",
+        gastosEntrenadores: temporada.finanzas?.gastosEntrenadores || "",
+        gastosOjeadores: temporada.finanzas?.gastosOjeadores || "",
+        gastosInfraestructura: temporada.finanzas?.gastosInfraestructura || "",
+        gastosOtros: temporada.finanzas?.gastosOtros || "",
+        ingresosOtros: temporada.finanzas?.ingresosOtros || "",
+        gastoTotal: temporada.finanzas?.gastoTotal || "",
+        ingresoTotal: temporada.finanzas?.ingresoTotal || "",
+        presupuestoFinal: temporada.finanzas?.presupuestoFinal || "",
+      },
+      completada: temporada.completada || false,
+    }
+
     // Añadir la temporada al modo
-    modes[modeIndex].temporadas.push(temporada)
+    modes[modeIndex].temporadas.push(temporadaCompleta)
 
     // Guardar en localStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(modes))
+
+    console.log("Temporada guardada correctamente:", temporadaCompleta)
+    console.log("Modo carrera actualizado:", modes[modeIndex])
 
     return true
   } catch (error) {

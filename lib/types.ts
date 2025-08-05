@@ -5,16 +5,27 @@ export interface Jugador {
   valoracion: string
   valoracionFinal?: string
   valor: string
+  valorCompra?: string // Nuevo campo
+  valorVenta?: string // Nuevo campo
   salario?: string
   estado: "en_club" | "cedido" | "vendido"
 }
 
 export interface Finanzas {
   presupuestoInicial: string
-  ingresosTransferencias: string
-  egresosTransferencias: string
+  // Fichajes (calculados automáticamente pero editables)
+  gastosFichajes: string
+  profitsFichajes: string
+  // Otros gastos detallados
+  gastosEntrenadores: string
+  gastosOjeadores: string
+  gastosInfraestructura: string
+  gastosOtros: string
+  // Otros ingresos
   ingresosOtros: string
-  egresosOtros: string
+  // Totales
+  gastoTotal: string
+  ingresoTotal: string
   presupuestoFinal: string
 }
 
